@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>CanvasQuest</title>
+    <style>
+        body
+        {   background-color: #222;}
+
+        #wrapper
+        {   width: 1000px;
+            position: relative;
+            margin: 0 auto;}
+
+        #canvas-box2d
+        {   position: absolute;
+            z-index: 1;}
+
+        #canvas-back
+        {   position: absolute;
+            background-color: #CCC;
+            z-index: 0;}
+
+        #canvas-front
+        {   position: absolute;
+            z-index: 2;}
+    </style>
+
+    <script type="text/javascript" src="_scripts/lib/jquery-1.7.2.min.js"></script>
+    <script type="text/javascript" src="_scripts/lib/easeljs-0.6.0.min.js"></script>
+    <script type="text/javascript" src="_scripts/lib/tweenjs-0.4.1.min.js"></script>
+    <script type="text/javascript" src="_scripts/lib/soundjs-0.4.1.min.js"></script>
+    <script type="text/javascript" src="_scripts/lib/preloadjs-0.3.1.min.js"></script>
+    <script type="text/javascript" src="_scripts/lib/Box2dWeb-2.1.a.3.min.js"></script>
+    <script type="text/javascript" src="_scripts/Body.js"></script>
+    <script type="text/javascript" src="_scripts/main.js"></script>
+</head>
+<body>
+    <div id="wrapper">
+        <canvas id="canvas-box2d" width="1000px" height="700px"></canvas>
+        <canvas id="canvas-back" width="1000px" height="700px"></canvas>
+        <canvas id="canvas-front" width="1000px" height="700px"></canvas>
+    </div>
+</body>
+</html>
+
