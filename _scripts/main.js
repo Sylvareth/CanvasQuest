@@ -17,7 +17,7 @@ var box2d = {
 //===================================GLOBAL VARIABLES===================================//
 //-----box2d-----//
 var physics, physicsCanvas, player, playerTop, floor,contactListener, touchFloor, joint, rotJoint_1, rotCenter,
-    rotPlatform, lastFrame = new Date().getTime(), destroyObjects = [], doubleJump;
+    rotPlatform, lastFrame = new Date().getTime(), destroyObjects = [], keypressed = false;
 
 var darknessPickup_1,
     darknessPickup_2,
@@ -43,14 +43,14 @@ var treasureChest, CATEGORY_PLAYER = 0x0001, CATEGORY_TREASURE = 0x0002, MASK_PL
 
 //-----General properties-----//
 var world, gravity, FPS = 60, SCALE = 30;
-var vel; //Player Velocity
 
 //---------SoundJS----------//
 var audioPath = "Sound/";
 var backgroundMusic, jumpSound, darknessSound, menuThemeInterval;
 var playMenuTheme = true;
 
-//--------PreloadJS---------//
+//=====================================PRELOADJS=====================================//
+// Create the PreLoad manifest, containing all files to preload.
 var preloader;
 var manifest = [
     {id: "preloadTitle", src:"Images/Preload/preloader.png"},
@@ -86,12 +86,12 @@ var manifest = [
 var totalLoaded = 0;
 
 function preload() {
-    //DEFINE CANVAS
+    // DEFINE CANVAS
     physicsCanvas = document.getElementById('canvas-box2d');
     graphicsCanvasBack = document.getElementById('canvas-back');
     graphicsCanvasFront = document.getElementById('canvas-front');
 
-    //SETUP STAGE
+    // SETUP STAGE
     stageBack = new createjs.Stage(graphicsCanvasBack);
     stageFront = new createjs.Stage(graphicsCanvasFront);
     stageFront.enableMouseOver(10);
@@ -99,7 +99,7 @@ function preload() {
     createjs.Ticker.setFPS(60);
     createjs.Ticker.addEventListener("tick", handleTick);
 
-    //PRELOAD STUFF
+    // PRELOAD STUFF
     var preloadImage = new Image();
     preloadImage.src = "Images/Preload/preloader.png";
     preloadImage.onload = function(e){
@@ -114,6 +114,7 @@ function preload() {
 
 function handleFileLoad(event){
     totalLoaded++;
+
     //CREATE LOADING BAR
     stageFront.removeChild(loadingBar);
     loadingBar = new createjs.Shape();
@@ -258,6 +259,7 @@ function init() {
     //==================================================================================================//
 }
 
+// Handle the EaselJS Tick() function.
 function handleTick()
 {
     if(displayMenu == false)
@@ -445,6 +447,9 @@ Physics.prototype.step = function() {
         }
     }
 
+    if(!keypressed && touchFloor)
+        player.SetLinearVelocity(new box2d.b2Vec2(0,player.GetLinearVelocity().y));
+
     //console.log(worldH + player.GetPosition().y);
 
     //Move camera upwards while moving in y
@@ -620,61 +625,9 @@ Physics.prototype.click = function(callback) {
     physicsCanvas.addEventListener("touchstart",handleClick);
 };*/
 
-//DO SOMETHING ON KEYDOWN
-Physics.prototype.handleKeyboard = function() {
-    doubleJump = true;
-    vel = player.GetLinearVelocity();
 
-    $(window).on('keydown', function(e) {
-        code = e.keyCode;
-        if(code == 38)
-        {
-            if(touchFloor) //ONLY JUMP WHEN ON GROUND
-            {
-                jump();
-                doubleJump = true; //Reset double jump when floor is touched
-            } else if(doubleJump)
-            {
-                jump();
-                doubleJump = false; //Disable double jump
-            }
-        }//Up Arrow
 
-        if(code == 39)   goRight();  //Right Arrow
-        if(code == 40)   stopMoving();  //Down Arrow
-        if(code == 37)   goLeft ();    //Left Arrow
-    });
-    
-    $(window).on('keyup', function(e){
-        var code = e.keyCode;
-        if(code == 39 && touchFloor == true || code == 37 && touchFloor == true) stopMoving();
-    });
 
-    function goRight() {
-        player.SetLinearVelocity(new box2d.b2Vec2(15,player.GetLinearVelocity().y));
-        console.log(player.GetLinearVelocity().Normalize());
-        //player.ApplyImpulse(new box2d.b2Vec2(15,player.GetLinearVelocity().y), player.GetWorldCenter());
-        //player.ApplyForce(new box2d.b2Vec2(50,player.GetLinearVelocity().y), player.GetWorldCenter());
-    };
-
-    function goLeft() {
-        player.SetLinearVelocity(new box2d.b2Vec2(-15,player.GetLinearVelocity().y));
-    };
-
-    function jump() {
-        player.ApplyImpulse(new box2d.b2Vec2(vel.x,-250), player.GetWorldCenter());
-
-        jumpSound = createjs.Sound.play('jumpSound');
-        jumpSound.setVolume(0.1);
-        jumpSound.play();
-    };
-
-    function stopMoving(){
-        player.SetLinearVelocity(new box2d.b2Vec2(0,player.GetLinearVelocity().y));
-        player.SetAngularVelocity(0);
-        playerTop.SetLinearVelocity(new box2d.b2Vec2(0,playerTop.GetLinearVelocity().y));
-    };
-};
 //=============================================================================================================//
 
 //START EVERYTHING
