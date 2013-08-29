@@ -6,6 +6,7 @@
 
 var doubleJump;
 var vel;
+var movingRight;
 
 Physics.prototype.handleKeyboard = function() {
     doubleJump = true;
@@ -28,29 +29,21 @@ Physics.prototype.handleKeyboard = function() {
             }
         }
 
-        if(code == 39)   goRight();     //Right Arrow
+        if(code == 39)   movingRight = true;   //Right Arrow
         if(code == 40)   stopMoving();  //Down Arrow
-        if(code == 37)   goLeft ();     //Left Arrow
+        if(code == 37)   movingLeft = true;     //Left Arrow
     });
 
     $(window).on('keyup', function(e){
         var code = e.keyCode;
         if(code == 39 && touchFloor == true || code == 37 && touchFloor == true) stopMoving();
 
+        if(code == 39 && touchFloor == false || code == 37 && touchFloor == false) moving = false;
+
         keypressed = false;
+        movingRight = false;
+        movingLeft = false;
     });
-};
-
-function goRight() {
-    if(touchFloor);
-    player.SetLinearVelocity(new box2d.b2Vec2(15,player.GetLinearVelocity().y));
-
-    //player.ApplyImpulse(new box2d.b2Vec2(15,player.GetLinearVelocity().y), player.GetWorldCenter());
-    //player.ApplyForce(new box2d.b2Vec2(50,player.GetLinearVelocity().y), player.GetWorldCenter());
-};
-
-function goLeft() {
-    player.SetLinearVelocity(new box2d.b2Vec2(-15,player.GetLinearVelocity().y));
 };
 
 function jump() {

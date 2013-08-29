@@ -17,29 +17,28 @@ var box2d = {
 //===================================GLOBAL VARIABLES===================================//
 //-----box2d-----//
 var physics, physicsCanvas, player, playerTop, floor,contactListener, touchFloor, joint, rotJoint_1, rotCenter,
-    rotPlatform, lastFrame = new Date().getTime(), destroyObjects = [], keypressed = false;
+    rotPlatform, lastFrame = new Date().getTime(), level1;
 
-var darknessPickup_1,
-    darknessPickup_2,
-    darknessPickup_3,
-    darknessPickup_4,
-    darknessPickup_5,
-    darknessPickup_6;
+// FLAGS
+var keypressed = false,
+    moving = false,
+    movingRight = false,
+    movingLeft = false
+
+// ARRAYS
+var collectibles = [],
+    destroyObjects = [],
+    treasureChest = [];
 
 //-----easeljs-----//
 var stageBack, stageFront,
     graphicsCanvasBack, graphicsCanvasFront,
     menuContext, displayMenu = true, code, preloadBitmap, loadingBar;
 var lives = 3, darkness = 0;
-var displayKey = false, displayDarknessPickup1 = true,
-                        displayDarknessPickup2 = true,
-                        displayDarknessPickup3 = true,
-                        displayDarknessPickup4 = true,
-                        displayDarknessPickup5 = true,
-                        displayDarknessPickup6 = true;
+var displayKey = false;
 
 //-----collision filtering-----//
-var treasureChest, CATEGORY_PLAYER = 0x0001, CATEGORY_TREASURE = 0x0002, MASK_PLAYER = CATEGORY_TREASURE, MASK_TREASURE = CATEGORY_PLAYER;
+CATEGORY_PLAYER = 0x0001, CATEGORY_TREASURE = 0x0002, MASK_PLAYER = CATEGORY_TREASURE, MASK_TREASURE = CATEGORY_PLAYER;
 
 //-----General properties-----//
 var world, gravity, FPS = 60, SCALE = 30;
@@ -81,7 +80,8 @@ var manifest = [
     {id: "gameDarknessPickup", src:"Images/Interface/darkness.png", name:"objectGraphic"},
     {id: "gameTower", src:"Images/tower.png", name:"objectGraphic"},
     {id: "gameTowerBeam", src:"Images/beam.png", name:"objectGraphic"},
-    {id: "gamePlayer", src:"Images/Characters/guy.png", name:"objectGraphic"}
+    {id: "gamePlayer", src:"Images/Characters/guy.png", name:"objectGraphic"},
+    {id: "gameRockTexture", src:"Images/rocky-surface.png", name:"objectGraphic"}
 ];
 var totalLoaded = 0;
 
@@ -133,6 +133,8 @@ function handleFileLoad(event){
 
 //===================================INITIALISE GAME===================================//
 function init() {
+    constructJSON();
+
     stageFront.removeChild(preloadBitmap, loadingBar);
 
     //===================================SOUNDJS=======================================//
@@ -306,56 +308,50 @@ function startGame(){
         musicLevel1.play();
     },48000);
 
+    //======================================CREATE OBJECTS========================================//
     // Define physics object
     physics = new Physics(physicsCanvas);
+    level1 = level1JSON;
 
-    // CREATE WALLS
-    new Body(physics, { type: "static", x: 0, y: 0, height: 50,  width: 0.5 });
-    new Body(physics, { color: "black", type: "static", x:200, y: 0, height: 50,  width: 0.5});
-    new Body(physics, { color: "red", type: "static", x: 200, y: -100, height: 0.5, width: 400 });
+    // CREATE LEVEL BOUNDARIES
+    for(i = 0; i<level1.walls.length; i++)
+    {
+        new Body(physics, level1.walls[i]);
+    }
 
     // CREATE FLOOR OBJECTS
-    floor = [   new Body(physics, { image: gameFloorTexture1, imgWidth: 140, imgHeight: 3.33, imgPosX: -70, imgPosY: -2.5, type: "static", x: 207, y:23, width: 138, height: 2}),
-        new Body(physics, {image: gameFloorTexture1, imgWidth: 140, imgHeight: 3.33, imgPosX: -70, imgPosY: -2.5, type: "static", x: 69, y: 23, width: 138, height: 2}),
-        new Body(physics, { type: "static", x: 10, y: 12, height: 0.5, width: 10}),
-        new Body(physics, { image: gameStepStones1, imgWidth: 4, imgHeight: 1.8, imgPosX: -2, imgPosY: -1.1, type: "static", x: 64, y: 15, height: 1, width: 3}),
-        new Body(physics, { image: gameStepStones1,imgWidth: 4, imgHeight: 1.8, imgPosX: -2, imgPosY: -1.1, type: "static", x: 58, y: 10, height: 1, width: 3}),
-        new Body(physics, { image: gameStepStones1,imgWidth: 4, imgHeight: 1.8, imgPosX: -2, imgPosY: -1.1, type: "static", x: 98, y: 10, height: 1, width: 3}),
-        new Body(physics, { image: gameStepStones1,imgWidth: 4, imgHeight: 1.8, imgPosX: -2, imgPosY: -1.1, type: "static", x: 108, y: 8, height: 1, width: 3}),
-        new Body(physics, { image: gamePlatform1, imgWidth: 27, imgHeight: 9, imgPosX: -13, imgPosY: -2, type: "static", x: 78, y: 5.5, height: 0.7, width: 25}),
-        new Body(physics, { image: gameHill1, imgWidth: 23, imgHeight: 6, imgPosX: -11, imgPosY: -3, type: "static", x: 80, y: 21, width: 20, height: 4 })
-
-        //new Body(physics, { color: "pink", type: "static", shape: "polygon",
-            //points: [ { x: -10, y: 20 }, { x: -10, y: 15 },{ x:10, y: 20 }   ],
-            //x: 20, y: 5 })
-    ];
+    floor = [];
+    for(var i = 0; i<level1.floor.length; i++)
+    {
+        var object = new Body(physics, level1.floor[i]);
+        floor.push(object);
+    }
     for(var i = 0; i < floor.length; i++)
     {
         floor[i].userData = ('floor');
+        // console.log(floor[i].GetPosition());
     }
 
     // CREATE PLAYER
     player = new Body(physics, {shape: "circle", radius: 1, x: 5, y: 20, categoryBits: CATEGORY_PLAYER, maskBits: MASK_PLAYER});
     player.userData = ('player');
     playerTop = new Body(physics, {image: gamePlayer, imgHeight:4.7, imgWidth:2.5, imgPosX: -1.5, imgPosY:-1.7,
-        shape: "block", x: 5, y: 18, width: 2, height: 3, friction:0, restitution: 0, categoryBits: CATEGORY_PLAYER, maskBits: MASK_PLAYER});
+        shape: "block", x: 5, y: 18, width: 2, height: 3, categoryBits: CATEGORY_PLAYER, maskBits: MASK_PLAYER});
     player.SetFixedRotation(true);
 
-    //CREATE INTERACTION OBJECTS
-    treasureChest = new Body(physics, { image: gameTreasureChest , type: "static", imgWidth: 4, imgHeight: 2.2,
-        imgPosX: -2, imgPosY: -1.3, x: 78, y:4, height: 2.2, width: 4, categoryBits: CATEGORY_PLAYER, maskBits: MASK_PLAYER});
-    darknessPickup_1 = new Body(physics, {image: gameDarknessPickup, type: "static", imgWidth: 2, imgHeight: 2,
-        imgPosX: -1, imgPosY: -1, x: 39, y: 20, height: 2, width: 2, categoryBits: CATEGORY_PLAYER, maskBits: MASK_PLAYER});
-    darknessPickup_2 = new Body(physics, {image: gameDarknessPickup, type: "static", imgWidth: 2, imgHeight: 2,
-        imgPosX: -1, imgPosY: -1, x: 64, y: 13, height: 2, width: 2, categoryBits: CATEGORY_PLAYER, maskBits: MASK_PLAYER});
-    darknessPickup_3 = new Body(physics, {image: gameDarknessPickup, type: "static", imgWidth: 2, imgHeight: 2,
-        imgPosX: -1, imgPosY: -1, x: 80, y: 17, height: 2, width: 2, categoryBits: CATEGORY_PLAYER, maskBits: MASK_PLAYER});
-    darknessPickup_4 = new Body(physics, {image: gameDarknessPickup, type: "static", imgWidth: 2, imgHeight: 2,
-        imgPosX: -1, imgPosY: -1, x: 90, y: 3.4, height: 2, width: 2, categoryBits: CATEGORY_PLAYER, maskBits: MASK_PLAYER});
-    darknessPickup_5 = new Body(physics, {image: gameDarknessPickup, type: "static", imgWidth: 2, imgHeight: 2,
-        imgPosX: -1, imgPosY: -1, x: 98, y: 8, height: 2, width: 2, categoryBits: CATEGORY_PLAYER, maskBits: MASK_PLAYER});
-    darknessPickup_6 = new Body(physics, {image: gameDarknessPickup, type: "static", imgWidth: 2, imgHeight: 2,
-        imgPosX: -1, imgPosY: -1, x: 120, y: 8, height: 2, width: 2, categoryBits: CATEGORY_PLAYER, maskBits: MASK_PLAYER});
+    // CREATE INTERACTION OBJECTS
+    for(var i = 0; i<level1.treasure.length; i++)
+    {
+        var object = new Body(physics, level1.treasure[i]);
+        treasureChest.push(object);
+    }
+
+    // CREATE COLLECTIBLES
+    for(var i = 0; i<level1.collectibles.length; i++)
+    {
+        var object = new Body(physics, level1.collectibles[i]);
+        collectibles.push(object);
+    }
 
     //CREATE ROTATING OBJECT
     rotPlatform = new Body(physics, { image: gameTowerBeam, imgWidth: 15, imgHeight:1, imgPosX: -7.5, imgPosY: -0.5, width: 15, height: 1, x: 120, y: 8});
@@ -374,6 +370,7 @@ function startGame(){
 
     // CREATE OBJECTS
     new Body(physics, { shape: 'circle', imgWidth: 4, imgHeight: 4, radius: 2, x: 5, y: 6, restitution: 0.2, categoryBits: CATEGORY_PLAYER, maskBits: MASK_PLAYER});
+    //============================================================================================//
 
     // KEYBOARD INPUT
     physics.handleKeyboard();
@@ -437,21 +434,36 @@ Physics.prototype.step = function() {
     var obj = world.GetBodyList();
 
     //Move camera sideways while moving in x
-    if((worldW - player.GetPosition().x) < screenW/2){
+    var playerPosition = player.GetPosition().x * 30;
+    var posX;
+    var posY;
+    posX = physicsCanvas.width/2-playerPosition;
+    if(posX < 0 && posX > -5014 ){
         levelOneBg.x -= player.GetLinearVelocity().x/8;
-        if(player.GetLinearVelocity().x > 0)
-            this.context.translate(-(player.GetLinearVelocity().x/2), 0);
-        
+        if(player.GetLinearVelocity().x >0)
+            if(player.GetLinearVelocity().x > 7.5)this.context.translate(-(player.GetLinearVelocity().x/2), 0);
         if (player.GetLinearVelocity().x < 0) {
-            this.context.translate(-(player.GetLinearVelocity().x/2), 0);
+            if(player.GetLinearVelocity().x < -7.5)this.context.translate(-(player.GetLinearVelocity().x/2), 0);
         }
     }
 
-    if(!keypressed && touchFloor)
+    // FLUID PLAYER MOVEMENT
+    if(movingRight)
+    {
+        moving = true;
+        player.SetLinearVelocity(new box2d.b2Vec2(10,player.GetLinearVelocity().y));
+        //player.ApplyForce(new box2d.b2Vec2(15,player.GetLinearVelocity().y), player.GetWorldCenter());
+    } else if(movingLeft)
+    {
+        player.SetLinearVelocity(new box2d.b2Vec2(-10,player.GetLinearVelocity().y));
+        moving = true;
+    }
+
+    // Make player stand still after jumping and touch ground (when no buttons are pressed)
+    if(!moving && touchFloor)
         player.SetLinearVelocity(new box2d.b2Vec2(0,player.GetLinearVelocity().y));
 
     //console.log(worldH + player.GetPosition().y);
-
     //Move camera upwards while moving in y
 //    if((worldH + player.GetPosition().y) < screenH/2){
 //        if(player.GetLinearVelocity().y > 0)
@@ -462,107 +474,33 @@ Physics.prototype.step = function() {
 //        }
 //    }
 
-    if(player.GetPosition().x >= treasureChest.GetPosition().x-2
-        && player.GetPosition().x <= treasureChest.GetPosition().x+2
-        && player.GetPosition().y >= treasureChest.GetPosition().y-1.1
-        && player.GetPosition().y <= treasureChest.GetPosition().y+1.1)
+    for(var i=0; i<level1.treasure.length; i++)
     {
-        displayKey = true;
-    } else displayKey = false;
-
-    if(displayDarknessPickup1 == true)
-    {
-        if(player.GetPosition().x >= darknessPickup_1.GetPosition().x-1.5
-            && player.GetPosition().x <= darknessPickup_1.GetPosition().x+1.5
-            && player.GetPosition().y >= darknessPickup_1.GetPosition().y-1.5
-            && player.GetPosition().y <= darknessPickup_1.GetPosition().y+1.5)
+        if(player.GetPosition().x >= treasureChest[i].GetPosition().x-2
+            && player.GetPosition().x <= treasureChest[i].GetPosition().x+2
+            && player.GetPosition().y >= treasureChest[i].GetPosition().y-1.1
+            && player.GetPosition().y <= treasureChest[i].GetPosition().y+1.1)
         {
-            darkness += 100;
-            darknessSound = createjs.Sound.play('darknessSound');
-            darknessSound.setVolume(0.1);
-            darknessSound.play();
-            displayDarknessPickup1 = false;
-            destroyObjects.push(darknessPickup_1);
-        }
+            displayKey = true;
+        } else displayKey = false;
     }
 
-    if(displayDarknessPickup2 == true)
+    for(var i=0; i<level1.collectibles.length; i++)
     {
-        if(player.GetPosition().x >= darknessPickup_2.GetPosition().x-1.5
-            && player.GetPosition().x <= darknessPickup_2.GetPosition().x+1.5
-            && player.GetPosition().y >= darknessPickup_2.GetPosition().y-1.5
-            && player.GetPosition().y <= darknessPickup_2.GetPosition().y+1.5)
+        if(level1.collectibles[i].display == true)
         {
-            darkness += 100;
-            darknessSound = createjs.Sound.play('darknessSound');
-            darknessSound.setVolume(0.1);
-            darknessSound.play();
-            displayDarknessPickup2 = false;
-            destroyObjects.push(darknessPickup_2);
-        }
-    }
-
-    if(displayDarknessPickup3 == true)
-    {
-        if(player.GetPosition().x >= darknessPickup_3.GetPosition().x-1.5
-            && player.GetPosition().x <= darknessPickup_3.GetPosition().x+1.5
-            && player.GetPosition().y >= darknessPickup_3.GetPosition().y-1.5
-            && player.GetPosition().y <= darknessPickup_3.GetPosition().y+1.5)
-        {
-            darkness += 100;
-            darknessSound = createjs.Sound.play('darknessSound');
-            darknessSound.setVolume(0.1);
-            darknessSound.play();
-            displayDarknessPickup3 = false;
-            destroyObjects.push(darknessPickup_3);
-        }
-    }
-
-    if(displayDarknessPickup4 == true)
-    {
-        if(player.GetPosition().x >= darknessPickup_4.GetPosition().x-1.5
-            && player.GetPosition().x <= darknessPickup_4.GetPosition().x+1.5
-            && player.GetPosition().y >= darknessPickup_4.GetPosition().y-1.5
-            && player.GetPosition().y <= darknessPickup_4.GetPosition().y+1.5)
-        {
-            darkness += 100;
-            darknessSound = createjs.Sound.play('darknessSound');
-            darknessSound.setVolume(0.1);
-            darknessSound.play();
-            displayDarknessPickup4 = false;
-            destroyObjects.push(darknessPickup_4);
-        }
-    }
-
-    if(displayDarknessPickup5 == true)
-    {
-        if(player.GetPosition().x >= darknessPickup_5.GetPosition().x-1.5
-            && player.GetPosition().x <= darknessPickup_5.GetPosition().x+1.5
-            && player.GetPosition().y >= darknessPickup_5.GetPosition().y-1.5
-            && player.GetPosition().y <= darknessPickup_5.GetPosition().y+1.5)
-        {
-            darkness += 100;
-            darknessSound = createjs.Sound.play('darknessSound');
-            darknessSound.setVolume(0.1);
-            darknessSound.play();
-            displayDarknessPickup5 = false;
-            destroyObjects.push(darknessPickup_5);
-        }
-    }
-
-    if(displayDarknessPickup6 == true)
-    {
-        if(player.GetPosition().x >= darknessPickup_6.GetPosition().x-1.5
-            && player.GetPosition().x <= darknessPickup_6.GetPosition().x+1.5
-            && player.GetPosition().y >= darknessPickup_6.GetPosition().y-1.5
-            && player.GetPosition().y <= darknessPickup_6.GetPosition().y+1.5)
-        {
-            darkness += 100;
-            darknessSound = createjs.Sound.play('darknessSound');
-            darknessSound.setVolume(0.1);
-            darknessSound.play();
-            displayDarknessPickup6 = false;
-            destroyObjects.push(darknessPickup_6);
+            if(player.GetPosition().x >= collectibles[i].GetPosition().x-1.5
+                && player.GetPosition().x <= collectibles[i].GetPosition().x+1.5
+                && player.GetPosition().y >= collectibles[i].GetPosition().y-1.5
+                && player.GetPosition().y <= collectibles[i].GetPosition().y+1.5)
+            {
+                darkness += 100;
+                darknessSound = createjs.Sound.play('darknessSound');
+                darknessSound.setVolume(0.1);
+                darknessSound.play();
+                level1.collectibles[i].display = false;
+                destroyObjects.push(collectibles[i]);
+            }
         }
     }
 
@@ -578,7 +516,7 @@ Physics.prototype.step = function() {
     playerTop.SetAngularVelocity(0);
 
     /* HIDE THIS BLOCK IF YOU WANT TO SEE DEBUG SHAPES */
-        this.context.clearRect(-500, -2000, 12000, 4000); //Important for redrawing problems!
+        this.context.clearRect(-500, -2000, 8000, 4000); //Important for redrawing problems!
         this.context.save();
         this.context.scale(this.scale,this.scale);
         while(obj) {
@@ -624,9 +562,6 @@ Physics.prototype.click = function(callback) {
     physicsCanvas.addEventListener("click",handleClick);
     physicsCanvas.addEventListener("touchstart",handleClick);
 };*/
-
-
-
 
 //=============================================================================================================//
 
