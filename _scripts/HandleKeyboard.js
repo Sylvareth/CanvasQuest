@@ -16,7 +16,7 @@ Physics.prototype.handleKeyboard = function() {
         code = e.keyCode;
         keypressed = true;
 
-        if(code == 38)                  // Up Arrow
+        if(code == 38)                  //Up Arrow
         {
             if(touchFloor)              //ONLY JUMP WHEN ON GROUND
             {
@@ -29,9 +29,10 @@ Physics.prototype.handleKeyboard = function() {
             }
         }
 
-        if(code == 39)   movingRight = true;   //Right Arrow
-        if(code == 40)   stopMoving();  //Down Arrow
+        if(code == 39)   movingRight = true;    //Right Arrow
+        if(code == 40)   stopMoving();          //Down Arrow
         if(code == 37)   movingLeft = true;     //Left Arrow
+        if(code == 80)   pauseGame();
     });
 
     $(window).on('keyup', function(e){
@@ -47,8 +48,8 @@ Physics.prototype.handleKeyboard = function() {
 };
 
 function jump() {
-    player.ApplyImpulse(new box2d.b2Vec2(vel.x,-250), player.GetWorldCenter());
-
+    player.ApplyImpulse(new box2d.b2Vec2(vel.x,-100), player.GetWorldCenter());
+    playerTop.ApplyImpulse(new box2d.b2Vec2(vel.x,-100), player.GetWorldCenter());
     jumpSound = createjs.Sound.play('jumpSound');
     jumpSound.setVolume(0.1);
     jumpSound.play();
@@ -58,4 +59,15 @@ function stopMoving(){
     player.SetLinearVelocity(new box2d.b2Vec2(0,player.GetLinearVelocity().y));
     player.SetAngularVelocity(0);
     playerTop.SetLinearVelocity(new box2d.b2Vec2(0,playerTop.GetLinearVelocity().y));
+    playerTop.SetAngularVelocity(0);
+};
+
+function pauseGame()
+{
+    if(timestep)
+    {
+        timestep = 0;
+    } else {
+        timestep = 1/FPS;
+    }
 };

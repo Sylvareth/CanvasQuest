@@ -17,16 +17,19 @@ var box2d = {
 //===================================GLOBAL VARIABLES===================================//
 //-----box2d-----//
 var physics, physicsCanvas, player, playerTop, floor,contactListener, touchFloor, joint, rotJoint_1, rotCenter,
-    rotPlatform, lastFrame = new Date().getTime(), level1;
+    rotPlatform, lastFrame = new Date().getTime(), level1, timer = 0;
 
 // FLAGS
 var keypressed = false,
     moving = false,
     movingRight = false,
-    movingLeft = false
+    movingLeft = false,
+    upperlevel = false,
+    displayKey = false;
 
 // ARRAYS
-var collectibles = [],
+var commoncollectibles = [],
+    rarecollectibles = [],
     destroyObjects = [],
     treasureChest = [];
 
@@ -34,14 +37,13 @@ var collectibles = [],
 var stageBack, stageFront,
     graphicsCanvasBack, graphicsCanvasFront,
     menuContext, displayMenu = true, code, preloadBitmap, loadingBar;
-var lives = 3, darkness = 0;
-var displayKey = false;
+var lives = 3, darkness = 0, darknessRare = 0;
 
 //-----collision filtering-----//
 CATEGORY_PLAYER = 0x0001, CATEGORY_TREASURE = 0x0002, MASK_PLAYER = CATEGORY_TREASURE, MASK_TREASURE = CATEGORY_PLAYER;
 
 //-----General properties-----//
-var world, gravity, FPS = 60, SCALE = 30;
+var world, gravity, FPS = 60, SCALE = 30, timestep = 1/FPS;
 
 //---------SoundJS----------//
 var audioPath = "Sound/";
@@ -59,6 +61,7 @@ var manifest = [
     {id: "menuTheme", src:audioPath+"Menu/menu-theme.wav"},
     {id: "jumpSound", src:audioPath+"Game/jump.wav"},
     {id: "darknessSound", src:audioPath+"Game/darkness-pickup.wav"},
+    {id: "darknessrareSound", src:audioPath+"Game/darknessrare-pickup.wav"},
     {id: "level-1", src:audioPath+"Game/lost-village.wav"},
     {id: "menuBg", src:"Images/Menu/menu-screen.png"},
     {id: "menuTitle", src:"Images/Menu/menu-title.png"},
@@ -70,18 +73,29 @@ var manifest = [
     {id: "menuSluiten", src: "Images/Menu/sluiten.png"},
     {id: "interfaceLife", src:"Images/Interface/heart.png"},
     {id: "interfaceDarkness", src:"Images/Interface/darkness.png"},
+    {id: "interfaceDarknessRare", src:"Images/Interface/darkness-rare.png"},
     {id: "interfaceKeyF", src:"Images/Interface/key-F.png"},
+    {id: "pauseBg", src:"Images/Interface/pause-bg.png"},
+    {id: "pauseTitle", src:"Images/Interface/pause.png"},
     {id: "levelOneBg", src:"Images/background.png"},
+    {id: "clouds", src:"Images/clouds.png"},
     {id: "gameFloorTexture1", src:"Images/floor-1.png", name:"objectGraphic"},
     {id: "gameHill1", src:"Images/block_grass.png", name:"objectGraphic"},
-    {id: "gameStepStones1", src: "Images/rock.png", name:"objectGraphic"},
-    {id: "gamePlatform1", src:"Images/platform_1.png", name:"objectGraphic"},
-    {id: "gameTreasureChest", src:"Images/treasure-chest.png", name:"objectGraphic"},
+    {id: "gameRock0", src:"Images/Objects/rock0.png", name:"objectGraphic"},
+    {id: "gameRock1", src:"Images/Objects/rock1.png", name:"objectGraphic"},
+    {id: "gameRock2", src:"Images/Objects/rock2.png", name:"objectGraphic"},
+    {id: "gameRock3", src:"Images/Objects/rock3.png", name:"objectGraphic"},
+    {id: "gameRock4", src:"Images/Objects/rock4.png", name:"objectGraphic"},
+    {id: "gameRock5", src:"Images/Objects/rock5.png", name:"objectGraphic"},
+    {id: "gamePlatform1", src:"Images/Objects/platform_1.png", name:"objectGraphic"},
+    {id: "gameTreasureChest", src:"Images/Objects/treasure-chest.png", name:"objectGraphic"},
     {id: "gameDarknessPickup", src:"Images/Interface/darkness.png", name:"objectGraphic"},
-    {id: "gameTower", src:"Images/tower.png", name:"objectGraphic"},
-    {id: "gameTowerBeam", src:"Images/beam.png", name:"objectGraphic"},
+    {id: "gameDarknessRarePickup", src:"Images/Interface/darkness-rare.png", name:"objectGraphic"},
+    {id: "gameTower", src:"Images/Objects/tower.png", name:"objectGraphic"},
+    {id: "gameTowerBeam", src:"Images/Objects/beam.png", name:"objectGraphic"},
     {id: "gamePlayer", src:"Images/Characters/guy.png", name:"objectGraphic"},
-    {id: "gameRockTexture", src:"Images/rocky-surface.png", name:"objectGraphic"}
+    {id: "gameRockTexture", src:"Images/Objects/rocky-surface.png", name:"objectGraphic"},
+    {id: "gamePalmtree", src:"Images/Objects/palmtree.png", name:"objectGraphic"}
 ];
 var totalLoaded = 0;
 
@@ -159,7 +173,7 @@ function init() {
 
     var buttonX = [422,379,413];
     var buttonY = [200,306,409];
-    stageFront.addChildAt(menuBg, 0); //AddChildAt 0 zodat achtergrond achteraan zit.
+    stageFront.addChildAt(menuBg, 0); //AddChildAt 0 to make sure that the background doesn't cover up anything.
 
     menuTitle.y = 20;
     menuTitle.x = 258;
@@ -191,10 +205,11 @@ function init() {
         displayMenu = false;
 
         //Create Interface
-        interfaceLife.x = interfaceLife.y = 20;
+        interfaceLife.x = 20;
         interfaceDarkness.x = 200;
-        interfaceDarkness.y = interfaceLife.y;
-        stageFront.addChild(interfaceLife, interfaceDarkness);
+        interfaceDarknessRare.x = 430;
+        interfaceDarknessRare.y = interfaceDarkness.y = interfaceLife.y = 20;
+        stageFront.addChild(interfaceLife, interfaceDarkness, interfaceDarknessRare);
 
         createjs.Sound.play('selectSound').setVolume(0.5);
     }
@@ -268,15 +283,26 @@ function handleTick()
     {
         var lifeText = new createjs.Text(lives, "72px Arial", "#000");
         lifeText.x = 100;
-        lifeText.y = 10;
 
-        var darknessText = new createjs.Text(darkness, "72px Arial", "#000");
+        var darknessText = new createjs.Text(darkness + "/" + commoncollectibles.length, "72px Arial", "#000");
         darknessText.x = 270;
-        darknessText.y = 10;
+
+        var darknessRareText = new createjs.Text(darknessRare + "/" + rarecollectibles.length , "72px Arial", "#000");
+        darknessRareText.x = 500;
+        lifeText.y = darknessText.y = darknessRareText.y = 10;
 
         backgroundMusic.stop();
         clearInterval(menuThemeInterval);
-        stageFront.addChild(lifeText, darknessText);
+        stageFront.addChild(lifeText, darknessText, darknessRareText);
+
+        if(!timestep)
+        {
+            pauseTitle.x = graphicsCanvasFront.width/2 - 96;
+            pauseTitle.y = graphicsCanvasFront.height/2 - 43;
+            stageFront.addChild(pauseBg, pauseTitle);
+        } else {
+            stageFront.removeChild(pauseBg, pauseTitle);
+        }
     }
 
     if(displayKey == true)
@@ -286,9 +312,7 @@ function handleTick()
 
     stageBack.update();
     stageFront.update();
-    stageFront.removeChild(lifeText);
-    stageFront.removeChild(darknessText);
-    stageFront.removeChild(interfaceKeyF);
+    stageFront.removeChild(lifeText, darknessText, darknessRareText, interfaceKeyF);
 }
 //================================================================================================//
 
@@ -296,7 +320,8 @@ function handleTick()
 function startGame(){
     //ADD BACKGROUND IMAGE
     levelOneBg.x = -150;
-    stageBack.addChild(levelOneBg);
+    clouds.y = -60;
+    stageBack.addChild(levelOneBg, clouds);
 
     //Setup and Start music
     var musicLevel1 = new createjs.Sound.play('level-1');
@@ -308,11 +333,11 @@ function startGame(){
         musicLevel1.play();
     },48000);
 
-    //======================================CREATE OBJECTS========================================//
     // Define physics object
     physics = new Physics(physicsCanvas);
     level1 = level1JSON;
 
+    //======================================CREATE OBJECTS========================================//
     // CREATE LEVEL BOUNDARIES
     for(i = 0; i<level1.walls.length; i++)
     {
@@ -329,7 +354,6 @@ function startGame(){
     for(var i = 0; i < floor.length; i++)
     {
         floor[i].userData = ('floor');
-        // console.log(floor[i].GetPosition());
     }
 
     // CREATE PLAYER
@@ -349,8 +373,25 @@ function startGame(){
     // CREATE COLLECTIBLES
     for(var i = 0; i<level1.collectibles.length; i++)
     {
-        var object = new Body(physics, level1.collectibles[i]);
-        collectibles.push(object);
+        if(level1.collectibles[i].subtype == "common")
+        {
+            var object = new Body(physics, level1.collectibles[i]);
+            commoncollectibles.push(object);
+        } else if(level1.collectibles[i].subtype == "rare")
+        {
+            var object = new Body(physics, level1.collectibles[i]);
+            rarecollectibles.push(object);
+        }
+    }
+
+    for(var i = 0; i<commoncollectibles.length; i++)
+    {
+        commoncollectibles[i].display = true;
+    }
+
+    for(var i = 0; i<rarecollectibles.length; i++)
+    {
+        rarecollectibles[i].display = true;
     }
 
     //CREATE ROTATING OBJECT
@@ -367,9 +408,6 @@ function startGame(){
     rotJoint_1.motorSpeed = 1;
     rotJoint_1.maxMotorTorque = 110;
     world.CreateJoint(rotJoint_1);
-
-    // CREATE OBJECTS
-    new Body(physics, { shape: 'circle', imgWidth: 4, imgHeight: 4, radius: 2, x: 5, y: 6, restitution: 0.2, categoryBits: CATEGORY_PLAYER, maskBits: MASK_PLAYER});
     //============================================================================================//
 
     // KEYBOARD INPUT
@@ -422,101 +460,123 @@ Physics.prototype.debugDraw = function() {
 
 //===========================================STEP THE WORLD===========================================//
 Physics.prototype.step = function() {
-    var screenW = physicsCanvas.width;
-    var screenH = physicsCanvas.height;
-    var worldH = 340;
-    var worldW = 517;
-
     //world.DrawDebugData();
-    world.Step(1 / FPS, 8, 3); //FPS, Velocity Iterations, Position Iterations
+    world.Step(timestep, 8, 3); //FPS, Velocity Iterations, Position Iterations
     //world.ClearForces(); //Enkel nuttig als je forces gebruikt zoals ApplyForce();
 
     var obj = world.GetBodyList();
 
-    //Move camera sideways while moving in x
-    var playerPosition = player.GetPosition().x * 30;
-    var posX;
-    var posY;
-    posX = physicsCanvas.width/2-playerPosition;
-    if(posX < 0 && posX > -5014 ){
-        levelOneBg.x -= player.GetLinearVelocity().x/8;
-        if(player.GetLinearVelocity().x >0)
-            if(player.GetLinearVelocity().x > 7.5)this.context.translate(-(player.GetLinearVelocity().x/2), 0);
-        if (player.GetLinearVelocity().x < 0) {
-            if(player.GetLinearVelocity().x < -7.5)this.context.translate(-(player.GetLinearVelocity().x/2), 0);
+    if(timestep)
+    {
+
+        // CAMERA PANNING IN X-AXIS
+        var playerPositionX = player.GetPosition().x * 30;
+        var playerPositionY = player.GetPosition().y * 30;
+        var posX;
+        var posY;
+        posX = physicsCanvas.width/2-playerPositionX;
+        posY = physicsCanvas.height/2-playerPositionY;
+        if(posX < 0 && posX > -5000 ){
+            levelOneBg.x -= player.GetLinearVelocity().x/8;
+            clouds.x -= player.GetLinearVelocity().x/6;
+            if(player.GetLinearVelocity().x >0)
+                this.context.translate(-(player.GetLinearVelocity().x/2), 0);
+            if (player.GetLinearVelocity().x < 0)
+                this.context.translate(-(player.GetLinearVelocity().x/2), 0);
         }
-    }
 
-    // FLUID PLAYER MOVEMENT
-    if(movingRight)
-    {
-        moving = true;
-        player.SetLinearVelocity(new box2d.b2Vec2(10,player.GetLinearVelocity().y));
-        //player.ApplyForce(new box2d.b2Vec2(15,player.GetLinearVelocity().y), player.GetWorldCenter());
-    } else if(movingLeft)
-    {
-        player.SetLinearVelocity(new box2d.b2Vec2(-10,player.GetLinearVelocity().y));
-        moving = true;
-    }
-
-    // Make player stand still after jumping and touch ground (when no buttons are pressed)
-    if(!moving && touchFloor)
-        player.SetLinearVelocity(new box2d.b2Vec2(0,player.GetLinearVelocity().y));
-
-    //console.log(worldH + player.GetPosition().y);
-    //Move camera upwards while moving in y
-//    if((worldH + player.GetPosition().y) < screenH/2){
-//        if(player.GetLinearVelocity().y > 0)
-//            this.context.translate(0, -(player.GetLinearVelocity().y/2));
-//
-//        if (player.GetLinearVelocity().y < 0) {
-//            this.context.translate(0, -(player.GetLinearVelocity().y/2));
-//        }
-//    }
-
-    for(var i=0; i<level1.treasure.length; i++)
-    {
-        if(player.GetPosition().x >= treasureChest[i].GetPosition().x-2
-            && player.GetPosition().x <= treasureChest[i].GetPosition().x+2
-            && player.GetPosition().y >= treasureChest[i].GetPosition().y-1.1
-            && player.GetPosition().y <= treasureChest[i].GetPosition().y+1.1)
+        // CAMERA SWITCHING TO UPPER LEVEL IN Y-AXIS
+        if(posY > 220 && upperlevel == false && touchFloor){
+            this.context.translate(0, 500);
+            upperlevel = true;
+        } else if (posY < 200 && upperlevel == true)
         {
-            displayKey = true;
-        } else displayKey = false;
-    }
+            this.context.translate(0, -500);
+            upperlevel = false;
+        }
 
-    for(var i=0; i<level1.collectibles.length; i++)
-    {
-        if(level1.collectibles[i].display == true)
+        // FLUID PLAYER MOVEMENT
+        if(movingRight)
         {
-            if(player.GetPosition().x >= collectibles[i].GetPosition().x-1.5
-                && player.GetPosition().x <= collectibles[i].GetPosition().x+1.5
-                && player.GetPosition().y >= collectibles[i].GetPosition().y-1.5
-                && player.GetPosition().y <= collectibles[i].GetPosition().y+1.5)
+            player.SetLinearVelocity(new box2d.b2Vec2(10,player.GetLinearVelocity().y));
+            playerTop.SetLinearVelocity(new box2d.b2Vec2(10,player.GetLinearVelocity().y));
+            moving = true;
+        } else if(movingLeft) {
+            player.SetLinearVelocity(new box2d.b2Vec2(-10,player.GetLinearVelocity().y));
+            playerTop.SetLinearVelocity(new box2d.b2Vec2(-10,player.GetLinearVelocity().y));
+            moving = true;
+        }
+
+        // Make player stand still after jumping and touch ground (when no buttons are pressed)
+        if(!moving && touchFloor)
+        {
+            player.SetLinearVelocity(new box2d.b2Vec2(0,player.GetLinearVelocity().y));
+            player.SetAngularVelocity(0);
+            playerTop.SetLinearVelocity(new box2d.b2Vec2(0,playerTop.GetLinearVelocity().y));
+        }
+
+        for(var i=0; i<level1.treasure.length; i++)
+        {
+            if(player.GetPosition().x >= treasureChest[i].GetPosition().x-2
+                && player.GetPosition().x <= treasureChest[i].GetPosition().x+2
+                && player.GetPosition().y >= treasureChest[i].GetPosition().y-1.1
+                && player.GetPosition().y <= treasureChest[i].GetPosition().y+1.1)
             {
-                darkness += 100;
-                darknessSound = createjs.Sound.play('darknessSound');
-                darknessSound.setVolume(0.1);
-                darknessSound.play();
-                level1.collectibles[i].display = false;
-                destroyObjects.push(collectibles[i]);
+                displayKey = true;
+            } else displayKey = false;
+        }
+
+        for(var i=0; i<commoncollectibles.length; i++)
+        {
+            if(commoncollectibles[i].display == true)
+            {
+                if(player.GetPosition().x >= commoncollectibles[i].GetPosition().x-1.5
+                    && player.GetPosition().x <= commoncollectibles[i].GetPosition().x+1.5
+                    && player.GetPosition().y >= commoncollectibles[i].GetPosition().y-1.5
+                    && player.GetPosition().y <= commoncollectibles[i].GetPosition().y+1.5)
+                {
+                    darkness += 1;
+                    darknessSound = createjs.Sound.play('darknessSound');
+                    darknessSound.setVolume(0.1);
+                    darknessSound.play();
+                    commoncollectibles[i].display = false;
+                    destroyObjects.push(commoncollectibles[i]);
+                }
             }
         }
-    }
 
-    // Destroy objects in the destroyObjects array after each timestep
-    for (var i in destroyObjects) {
-        world.DestroyBody(destroyObjects[i]);
-    }
-    // Reset destroyObjects array
-    destroyObjects.length = 0;
+        for(var i=0; i<rarecollectibles.length; i++)
+        {
+            if(rarecollectibles[i].display == true)
+            {
+                if(player.GetPosition().x >= rarecollectibles[i].GetPosition().x-1.5
+                    && player.GetPosition().x <= rarecollectibles[i].GetPosition().x+1.5
+                    && player.GetPosition().y >= rarecollectibles[i].GetPosition().y-1.5
+                    && player.GetPosition().y <= rarecollectibles[i].GetPosition().y+1.5)
+                {
+                    darknessRare += 1;
+                    darknessSound = createjs.Sound.play('darknessrareSound');
+                    darknessSound.setVolume(0.1);
+                    darknessSound.play();
+                    rarecollectibles[i].display = false;
+                    destroyObjects.push(rarecollectibles[i]);
+                }
+            }
+        }
 
-    //Stop player from rotating
-    playerTop.SetAngle(0);
-    playerTop.SetAngularVelocity(0);
+        // Destroy objects in the destroyObjects array after each timestep
+        for (var i in destroyObjects) {
+            world.DestroyBody(destroyObjects[i]);
+        }
+        // Reset destroyObjects array
+        destroyObjects.length = 0;
 
-    /* HIDE THIS BLOCK IF YOU WANT TO SEE DEBUG SHAPES */
-        this.context.clearRect(-500, -2000, 8000, 4000); //Important for redrawing problems!
+        //Stop player from rotating
+        playerTop.SetAngle(0);
+        playerTop.SetAngularVelocity(0);
+
+        /* HIDE THIS BLOCK IF YOU WANT TO SEE DEBUG SHAPES */
+        this.context.clearRect(-500, -2000, 7000, 4000); //Important for redrawing problems!
         this.context.save();
         this.context.scale(this.scale,this.scale);
         while(obj) {
@@ -526,10 +586,12 @@ Physics.prototype.step = function() {
             obj = obj.GetNext();
         }
         this.context.restore();
-    /* HIDE THIS BLOCK IF YOU WANT TO SEE DEBUG SHAPES */
+        /* HIDE THIS BLOCK IF YOU WANT TO SEE DEBUG SHAPES */
 
-    world.SetContactListener(contactListener);
-};
+        world.SetContactListener(contactListener);
+    }
+
+ }
 
 //=========================================BOX2D CENTRAL UPDATE FUNCTION========================================//
 window.gameLoop = function() {
@@ -565,5 +627,13 @@ Physics.prototype.click = function(callback) {
 
 //=============================================================================================================//
 
-//START EVERYTHING
+// START EVERYTHING
 window.addEventListener("load",preload);
+
+// PREVENT SCROLLING WITH KEYS
+window.addEventListener("keydown", function(e) {
+    // space and arrow keys
+    if([32, 37, 38, 39, 40].indexOf(e.keyCode) > -1) {
+        e.preventDefault();
+    }
+}, false);

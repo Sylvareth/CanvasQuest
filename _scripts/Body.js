@@ -61,7 +61,6 @@
                 break;
         }
 
-
         this.fixtureDef.filter.categoryBits = details.categoryBits || this.fixtureDefaults.categoryBits;
         this.fixtureDef.filter.maskBits = details.maskBits || this.fixtureDefaults.maskBits;
 
@@ -95,7 +94,6 @@
         bullet: false,
         fixedRotation: false
     };
-
 
     Body.prototype.draw = function(context) {
         var pos = this.body.GetPosition(),
