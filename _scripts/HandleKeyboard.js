@@ -32,7 +32,8 @@ Physics.prototype.handleKeyboard = function() {
         if(code == 39)   movingRight = true;    //Right Arrow
         if(code == 40)   stopMoving();          //Down Arrow
         if(code == 37)   movingLeft = true;     //Left Arrow
-        if(code == 80)   pauseGame();
+        if(code == 80)   pauseGame();           //P-Key
+        if(code == 70)   openChest();           //F-Key
     });
 
     $(window).on('keyup', function(e){
@@ -69,5 +70,39 @@ function pauseGame()
         timestep = 0;
     } else {
         timestep = 1/FPS;
+    }
+};
+
+function openChest()
+{
+    var treasure;
+    if(displayKey)
+    {
+        for(var i = 0; i < treasureChest.length; i++)
+        {
+            new Body(physics, { image: gameTreasureChestOpen , type: "static" , imgWidth: 4 , imgHeight: 2.2 ,
+                imgPosX: -2 , imgPosY: -1.3 , x:level1.treasure[i].x , y:level1.treasure[i].y , height: 2.2 , width: 4 , categoryBits: CATEGORY_PLAYER , maskBits: MASK_PLAYER });
+            createjs.Sound.play('chestSound');
+            createjs.Sound.play('treasureSound');
+            if(treasureChest[0])
+            {
+                treasure = extralife;
+                stageFront.addChild(treasure);
+                lives += 1;
+                displayTreasure = true;
+            }
+
+            treasure.x = graphicsCanvasFront.width/2 - 34;
+            treasure.y = graphicsCanvasFront.height/2 - 30;
+            treasure.alpha = 0;
+            createjs.Tween.get(treasure).to({alpha:1}, 500).wait(500)
+                .to({x:treasure.x, y:-100},1000,createjs.Ease.sineOut).call(onComplete);
+            function onComplete()
+            {
+                stageFront.removeChild(treasure);
+            }
+            destroyObjects.push(treasureChest[i]);
+            treasureChest[i].display = false;
+        }
     }
 };

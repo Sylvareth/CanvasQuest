@@ -16,8 +16,8 @@ var box2d = {
 
 //===================================GLOBAL VARIABLES===================================//
 //-----box2d-----//
-var physics, physicsCanvas, player, playerTop, floor,contactListener, touchFloor, joint, rotJoint_1, rotCenter,
-    rotPlatform, lastFrame = new Date().getTime(), level1, timer = 0;
+var physics, physicsCanvas, player, playerTop,contactListener, touchFloor, joint, rotJoint_1, rotCenter, rotPlatform,
+    lastFrame = new Date().getTime(), level1, timer = 1, portal, angle = 0;
 
 // FLAGS
 var keypressed = false,
@@ -25,19 +25,22 @@ var keypressed = false,
     movingRight = false,
     movingLeft = false,
     upperlevel = false,
-    displayKey = false;
+    displayKey = false,
+    displayTreasure = false,
+    levelFinish = false;
 
 // ARRAYS
 var commoncollectibles = [],
     rarecollectibles = [],
     destroyObjects = [],
-    treasureChest = [];
+    treasureChest = [],
+    floor = [];
 
 //-----easeljs-----//
 var stageBack, stageFront,
     graphicsCanvasBack, graphicsCanvasFront,
     menuContext, displayMenu = true, code, preloadBitmap, loadingBar;
-var lives = 3, darkness = 0, darknessRare = 0;
+var lives = 3, darkness = 0, darknessRare = 0, score = 0;
 
 //-----collision filtering-----//
 CATEGORY_PLAYER = 0x0001, CATEGORY_TREASURE = 0x0002, MASK_PLAYER = CATEGORY_TREASURE, MASK_TREASURE = CATEGORY_PLAYER;
@@ -47,7 +50,7 @@ var world, gravity, FPS = 60, SCALE = 30, timestep = 1/FPS;
 
 //---------SoundJS----------//
 var audioPath = "Sound/";
-var backgroundMusic, jumpSound, darknessSound, menuThemeInterval;
+var backgroundMusic, jumpSound, darknessSound, chestSound, menuThemeInterval;
 var playMenuTheme = true;
 
 //=====================================PRELOADJS=====================================//
@@ -55,13 +58,16 @@ var playMenuTheme = true;
 var preloader;
 var manifest = [
     {id: "preloadTitle", src:"Images/Preload/preloader.png"},
-    {id: "hoverSound", src: audioPath+"Menu/menu-hover.wav"},
-    {id: "selectSound", src: audioPath+"Menu/menu-select.wav"},
+    {id: "hoverSound", src:audioPath+"Menu/menu-hover.wav"},
+    {id: "selectSound", src:audioPath+"Menu/menu-select.wav"},
+    {id: "scoreSound", src:audioPath+"Game/score.wav"},
+    {id: "treasureSound",src:audioPath+"Game/treasure.wav"},
     {id: "backSound", src:audioPath+"Menu/menu-back.wav"},
     {id: "menuTheme", src:audioPath+"Menu/menu-theme.wav"},
     {id: "jumpSound", src:audioPath+"Game/jump.wav"},
     {id: "darknessSound", src:audioPath+"Game/darkness-pickup.wav"},
     {id: "darknessrareSound", src:audioPath+"Game/darknessrare-pickup.wav"},
+    {id: "chestSound", src:audioPath+"Game/chest.wav"},
     {id: "level-1", src:audioPath+"Game/lost-village.wav"},
     {id: "menuBg", src:"Images/Menu/menu-screen.png"},
     {id: "menuTitle", src:"Images/Menu/menu-title.png"},
@@ -72,15 +78,19 @@ var manifest = [
     {id: "menuCreditsTekst", src:"Images/Menu/credits.png"},
     {id: "menuSluiten", src: "Images/Menu/sluiten.png"},
     {id: "interfaceLife", src:"Images/Interface/heart.png"},
+    {id: "extralife", src:"Images/Interface/heart.png"},
     {id: "interfaceDarkness", src:"Images/Interface/darkness.png"},
     {id: "interfaceDarknessRare", src:"Images/Interface/darkness-rare.png"},
     {id: "interfaceKeyF", src:"Images/Interface/key-F.png"},
     {id: "pauseBg", src:"Images/Interface/pause-bg.png"},
     {id: "pauseTitle", src:"Images/Interface/pause.png"},
+    {id: "finishBg", src:"Images/Interface/finish-bg.png"},
+    {id: "results11", src:"Images/Interface/results-1-1.png"},
+    {id: "nextLevel", src:"Images/Interface/nextlvl.png"},
     {id: "levelOneBg", src:"Images/background.png"},
     {id: "clouds", src:"Images/clouds.png"},
     {id: "gameFloorTexture1", src:"Images/floor-1.png", name:"objectGraphic"},
-    {id: "gameHill1", src:"Images/block_grass.png", name:"objectGraphic"},
+    {id: "gameHill1", src:"Images/Objects/block_grass.png", name:"objectGraphic"},
     {id: "gameRock0", src:"Images/Objects/rock0.png", name:"objectGraphic"},
     {id: "gameRock1", src:"Images/Objects/rock1.png", name:"objectGraphic"},
     {id: "gameRock2", src:"Images/Objects/rock2.png", name:"objectGraphic"},
@@ -89,13 +99,15 @@ var manifest = [
     {id: "gameRock5", src:"Images/Objects/rock5.png", name:"objectGraphic"},
     {id: "gamePlatform1", src:"Images/Objects/platform_1.png", name:"objectGraphic"},
     {id: "gameTreasureChest", src:"Images/Objects/treasure-chest.png", name:"objectGraphic"},
+    {id: "gameTreasureChestOpen", src:"Images/Objects/treasure-chest-open.png", name:"objectGraphic"},
     {id: "gameDarknessPickup", src:"Images/Interface/darkness.png", name:"objectGraphic"},
     {id: "gameDarknessRarePickup", src:"Images/Interface/darkness-rare.png", name:"objectGraphic"},
     {id: "gameTower", src:"Images/Objects/tower.png", name:"objectGraphic"},
     {id: "gameTowerBeam", src:"Images/Objects/beam.png", name:"objectGraphic"},
     {id: "gamePlayer", src:"Images/Characters/guy.png", name:"objectGraphic"},
     {id: "gameRockTexture", src:"Images/Objects/rocky-surface.png", name:"objectGraphic"},
-    {id: "gamePalmtree", src:"Images/Objects/palmtree.png", name:"objectGraphic"}
+    {id: "gamePalmtree", src:"Images/Objects/palmtree.png", name:"objectGraphic"},
+    {id: "gamePortal", src:"Images/Objects/portal.png", name:"objectGraphic"}
 ];
 var totalLoaded = 0;
 
@@ -147,18 +159,18 @@ function handleFileLoad(event){
 
 //===================================INITIALISE GAME===================================//
 function init() {
+    // INITIALISE JSON
     constructJSON();
 
     stageFront.removeChild(preloadBitmap, loadingBar);
 
     //===================================SOUNDJS=======================================//
+    createjs.Sound.registerManifest(manifest);
+
     createjs.Sound.addEventListener("loadComplete", handleLoad);
     menuThemeInterval = setInterval(function(){
         backgroundMusic = createjs.Sound.play('menuTheme');
-        backgroundMusic.play();
     },87000);
-
-    createjs.Sound.registerManifest(manifest);
 
     function handleLoad() {
         backgroundMusic = createjs.Sound.play('menuTheme');
@@ -253,6 +265,7 @@ function init() {
     menuCredits.onMouseOut = function(){
         createjs.Tween.get(menuCredits).to({alpha: 1},200,createjs.Ease.backOut)
     }
+
     menuCredits.onClick = function(){
         createjs.Sound.play('selectSound').setVolume(0.5);
         menuCreditsTekst.x = 100;
@@ -295,7 +308,7 @@ function handleTick()
         clearInterval(menuThemeInterval);
         stageFront.addChild(lifeText, darknessText, darknessRareText);
 
-        if(!timestep)
+        if(!timestep && !levelFinish)
         {
             pauseTitle.x = graphicsCanvasFront.width/2 - 96;
             pauseTitle.y = graphicsCanvasFront.height/2 - 43;
@@ -303,16 +316,68 @@ function handleTick()
         } else {
             stageFront.removeChild(pauseBg, pauseTitle);
         }
+
+        if(levelFinish)
+        {
+            timestep = 0;
+            results11.x = graphicsCanvasFront.width/2 - 289;
+            results11.y = 20;
+            timer++;
+            stageFront.removeChild(lifeText, darknessText, darknessRareText, interfaceLife, interfaceDarkness, interfaceDarknessRare);
+
+            score = 230 * darkness + 625 * darknessRare;
+            var darknessCollected = new createjs.Text("Darkness collected: " + darkness + " (x 230)", "40px Arial", "#FFF");
+            var darknessRareCollected = new createjs.Text("Rare Darkness collected: " + darknessRare + " (x 635)", "40px Arial", "#FFF");
+            var yourScore = new createjs.Text("Your Score: " + score, "72px Arial", "#FFF");
+            darknessCollected.y = 150;
+            darknessRareCollected.y = 220;
+            yourScore.y = 350;
+            nextLevel.x = 650;
+            nextLevel.y = 550;
+            darknessCollected.x = darknessRareCollected.x = yourScore.x = 100;
+
+            if(timer == 5)
+            {
+                stageFront.addChild(finishBg, results11);
+            } else if(timer == 50)
+            {
+                stageFront.addChild(darknessCollected);
+                createjs.Sound.play('scoreSound');
+            } else if(timer == 100)
+            {
+                stageFront.addChild(darknessRareCollected);
+                createjs.Sound.play('scoreSound');
+            } else if(timer == 200)
+            {
+                nextLevel.alpha = 0.5;
+                stageFront.addChild(yourScore, nextLevel);
+                createjs.Sound.play('scoreSound');
+            }
+
+            nextLevel.onMouseOver = function(){
+                createjs.Tween.get(nextLevel).to({alpha: 1},200,createjs.Ease.backIn);
+                createjs.Sound.play('hoverSound').setVolume(0.5);
+            }
+            nextLevel.onMouseOut = function(){
+                createjs.Tween.get(nextLevel).to({alpha: 0.5},200,createjs.Ease.backOut)
+            }
+            nextLevel.onClick = function(){
+                createjs.Sound.play('selectSound').setVolume(0.5);
+            }
+        }
     }
 
-    if(displayKey == true)
+    for(var i = 0; i < treasureChest.length; i++)
     {
-        stageFront.addChild(interfaceKeyF);
+        if(displayKey == true && treasureChest[i].display == true)
+        {
+            stageFront.addChild(interfaceKeyF);
+        }
     }
 
     stageBack.update();
     stageFront.update();
-    stageFront.removeChild(lifeText, darknessText, darknessRareText, interfaceKeyF);
+    stageFront.removeChild(lifeText, darknessText, darknessRareText, interfaceKeyF, darknessCollected, darknessRareCollected);
 }
 //================================================================================================//
 
@@ -321,6 +386,7 @@ function startGame(){
     //ADD BACKGROUND IMAGE
     levelOneBg.x = -150;
     clouds.y = -60;
+    clouds.x = 40;
     stageBack.addChild(levelOneBg, clouds);
 
     //Setup and Start music
@@ -345,7 +411,6 @@ function startGame(){
     }
 
     // CREATE FLOOR OBJECTS
-    floor = [];
     for(var i = 0; i<level1.floor.length; i++)
     {
         var object = new Body(physics, level1.floor[i]);
@@ -364,14 +429,18 @@ function startGame(){
     player.SetFixedRotation(true);
 
     // CREATE INTERACTION OBJECTS
-    for(var i = 0; i<level1.treasure.length; i++)
+    for(var i = 0; i < level1.treasure.length; i++)
     {
         var object = new Body(physics, level1.treasure[i]);
-        treasureChest.push(object);
+            treasureChest.push(object);
+    }
+    for(var i = 0; i < treasureChest.length; i++)
+    {
+        treasureChest[i].display = true;
     }
 
     // CREATE COLLECTIBLES
-    for(var i = 0; i<level1.collectibles.length; i++)
+    for(var i = 0; i < level1.collectibles.length; i++)
     {
         if(level1.collectibles[i].subtype == "common")
         {
@@ -384,15 +453,18 @@ function startGame(){
         }
     }
 
-    for(var i = 0; i<commoncollectibles.length; i++)
+    for(var i = 0; i < commoncollectibles.length; i++)
     {
         commoncollectibles[i].display = true;
     }
 
-    for(var i = 0; i<rarecollectibles.length; i++)
+    for(var i = 0; i < rarecollectibles.length; i++)
     {
         rarecollectibles[i].display = true;
     }
+
+    //CREATE LEVEL PORTAL
+    portal = new Body(physics, level1.portal[0]);
 
     //CREATE ROTATING OBJECT
     rotPlatform = new Body(physics, { image: gameTowerBeam, imgWidth: 15, imgHeight:1, imgPosX: -7.5, imgPosY: -0.5, width: 15, height: 1, x: 120, y: 8});
@@ -408,6 +480,8 @@ function startGame(){
     rotJoint_1.motorSpeed = 1;
     rotJoint_1.maxMotorTorque = 110;
     world.CreateJoint(rotJoint_1);
+
+    new Body(physics, { shape:'circle', imgWidth:4, imgHeight:4, radius:2, x:5, y:6, restitution:0.2, categoryBits:CATEGORY_PLAYER, maskBits:MASK_PLAYER});
     //============================================================================================//
 
     // KEYBOARD INPUT
@@ -468,6 +542,7 @@ Physics.prototype.step = function() {
 
     if(timestep)
     {
+        clouds.x -= 0.15;
 
         // CAMERA PANNING IN X-AXIS
         var playerPositionX = player.GetPosition().x * 30;
@@ -495,74 +570,8 @@ Physics.prototype.step = function() {
             upperlevel = false;
         }
 
-        // FLUID PLAYER MOVEMENT
-        if(movingRight)
-        {
-            player.SetLinearVelocity(new box2d.b2Vec2(10,player.GetLinearVelocity().y));
-            playerTop.SetLinearVelocity(new box2d.b2Vec2(10,player.GetLinearVelocity().y));
-            moving = true;
-        } else if(movingLeft) {
-            player.SetLinearVelocity(new box2d.b2Vec2(-10,player.GetLinearVelocity().y));
-            playerTop.SetLinearVelocity(new box2d.b2Vec2(-10,player.GetLinearVelocity().y));
-            moving = true;
-        }
-
-        // Make player stand still after jumping and touch ground (when no buttons are pressed)
-        if(!moving && touchFloor)
-        {
-            player.SetLinearVelocity(new box2d.b2Vec2(0,player.GetLinearVelocity().y));
-            player.SetAngularVelocity(0);
-            playerTop.SetLinearVelocity(new box2d.b2Vec2(0,playerTop.GetLinearVelocity().y));
-        }
-
-        for(var i=0; i<level1.treasure.length; i++)
-        {
-            if(player.GetPosition().x >= treasureChest[i].GetPosition().x-2
-                && player.GetPosition().x <= treasureChest[i].GetPosition().x+2
-                && player.GetPosition().y >= treasureChest[i].GetPosition().y-1.1
-                && player.GetPosition().y <= treasureChest[i].GetPosition().y+1.1)
-            {
-                displayKey = true;
-            } else displayKey = false;
-        }
-
-        for(var i=0; i<commoncollectibles.length; i++)
-        {
-            if(commoncollectibles[i].display == true)
-            {
-                if(player.GetPosition().x >= commoncollectibles[i].GetPosition().x-1.5
-                    && player.GetPosition().x <= commoncollectibles[i].GetPosition().x+1.5
-                    && player.GetPosition().y >= commoncollectibles[i].GetPosition().y-1.5
-                    && player.GetPosition().y <= commoncollectibles[i].GetPosition().y+1.5)
-                {
-                    darkness += 1;
-                    darknessSound = createjs.Sound.play('darknessSound');
-                    darknessSound.setVolume(0.1);
-                    darknessSound.play();
-                    commoncollectibles[i].display = false;
-                    destroyObjects.push(commoncollectibles[i]);
-                }
-            }
-        }
-
-        for(var i=0; i<rarecollectibles.length; i++)
-        {
-            if(rarecollectibles[i].display == true)
-            {
-                if(player.GetPosition().x >= rarecollectibles[i].GetPosition().x-1.5
-                    && player.GetPosition().x <= rarecollectibles[i].GetPosition().x+1.5
-                    && player.GetPosition().y >= rarecollectibles[i].GetPosition().y-1.5
-                    && player.GetPosition().y <= rarecollectibles[i].GetPosition().y+1.5)
-                {
-                    darknessRare += 1;
-                    darknessSound = createjs.Sound.play('darknessrareSound');
-                    darknessSound.setVolume(0.1);
-                    darknessSound.play();
-                    rarecollectibles[i].display = false;
-                    destroyObjects.push(rarecollectibles[i]);
-                }
-            }
-        }
+        handlePickups();
+        handlePlayer();
 
         // Destroy objects in the destroyObjects array after each timestep
         for (var i in destroyObjects) {
@@ -570,10 +579,6 @@ Physics.prototype.step = function() {
         }
         // Reset destroyObjects array
         destroyObjects.length = 0;
-
-        //Stop player from rotating
-        playerTop.SetAngle(0);
-        playerTop.SetAngularVelocity(0);
 
         /* HIDE THIS BLOCK IF YOU WANT TO SEE DEBUG SHAPES */
         this.context.clearRect(-500, -2000, 7000, 4000); //Important for redrawing problems!
@@ -590,8 +595,96 @@ Physics.prototype.step = function() {
 
         world.SetContactListener(contactListener);
     }
+}
 
- }
+function handlePickups()
+{
+    for(var i = 0; i < treasureChest.length; i++)
+    {
+        if(player.GetPosition().x >= treasureChest[i].GetPosition().x-2
+            && player.GetPosition().x <= treasureChest[i].GetPosition().x+2
+            && player.GetPosition().y >= treasureChest[i].GetPosition().y-1.1
+            && player.GetPosition().y <= treasureChest[i].GetPosition().y+1.1
+            && treasureChest[i].display == true)
+        {
+            displayKey = true;
+        } else displayKey = false;
+    }
+
+    for(var i = 0; i < commoncollectibles.length; i++)
+    {
+        if(commoncollectibles[i].display == true)
+        {
+            if(player.GetPosition().x >= commoncollectibles[i].GetPosition().x-1.5
+                && player.GetPosition().x <= commoncollectibles[i].GetPosition().x+1.5
+                && player.GetPosition().y >= commoncollectibles[i].GetPosition().y-1.5
+                && player.GetPosition().y <= commoncollectibles[i].GetPosition().y+1.5)
+            {
+                darkness += 1;
+                darknessSound = createjs.Sound.play('darknessSound');
+                darknessSound.setVolume(0.1);
+                darknessSound.play();
+                commoncollectibles[i].display = false;
+                destroyObjects.push(commoncollectibles[i]);
+            }
+        }
+    }
+
+    for(var i = 0; i < rarecollectibles.length; i++)
+    {
+        if(rarecollectibles[i].display == true)
+        {
+            if(player.GetPosition().x >= rarecollectibles[i].GetPosition().x-1.5
+                && player.GetPosition().x <= rarecollectibles[i].GetPosition().x+1.5
+                && player.GetPosition().y >= rarecollectibles[i].GetPosition().y-1.5
+                && player.GetPosition().y <= rarecollectibles[i].GetPosition().y+1.5)
+            {
+                darknessRare += 1;
+                darknessSound = createjs.Sound.play('darknessrareSound');
+                darknessSound.setVolume(0.1);
+                darknessSound.play();
+                rarecollectibles[i].display = false;
+                destroyObjects.push(rarecollectibles[i]);
+            }
+        }
+    }
+
+    if(player.GetPosition().x >= portal.GetPosition().x-2
+        && player.GetPosition().x <= portal.GetPosition().x+2
+        && player.GetPosition().y >= portal.GetPosition().y-1
+        && player.GetPosition().y <= portal.GetPosition().y+1
+        && !levelFinish)
+    {
+        levelFinish = true;
+    }
+}
+
+function handlePlayer()
+{
+    // FLUID PLAYER MOVEMENT
+    if(movingRight)
+    {
+        player.SetLinearVelocity(new box2d.b2Vec2(10,player.GetLinearVelocity().y));
+        playerTop.SetLinearVelocity(new box2d.b2Vec2(10,player.GetLinearVelocity().y));
+        moving = true;
+    } else if(movingLeft) {
+        player.SetLinearVelocity(new box2d.b2Vec2(-10,player.GetLinearVelocity().y));
+        playerTop.SetLinearVelocity(new box2d.b2Vec2(-10,player.GetLinearVelocity().y));
+        moving = true;
+    }
+
+    // Make player stand still after jumping and touch ground (when no buttons are pressed)
+    if(!moving && touchFloor)
+    {
+        player.SetLinearVelocity(new box2d.b2Vec2(0,player.GetLinearVelocity().y));
+        player.SetAngularVelocity(0);
+        playerTop.SetLinearVelocity(new box2d.b2Vec2(0,playerTop.GetLinearVelocity().y));
+    }
+
+    // Stop player from rotating
+    playerTop.SetAngle(0);
+    playerTop.SetAngularVelocity(0);
+}
 
 //=========================================BOX2D CENTRAL UPDATE FUNCTION========================================//
 window.gameLoop = function() {

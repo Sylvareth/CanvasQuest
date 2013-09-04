@@ -16,11 +16,11 @@ function constructJSON(){
             { image:gameRock0 , "imgWidth":7.33 , "imgHeight":3.2, "imgPosX":-3.5 , "imgPosY": -1.1 , "type":"static" , "x":108, "y":8 , "width":3.5 , "height":1 },
             { image:gamePlatform1 , "imgWidth":27 , "imgHeight":9, "imgPosX":-13 , "imgPosY": -2 , "type":"static" , "x":78, "y": 5.5 , "width":25 , "height":0.7 },
             { image:gameHill1 , "imgWidth":23 , "imgHeight":6, "imgPosX":-11 , "imgPosY": -3 , "type":"static" , "x":80, "y": 21 , "width":20 , "height":4 },
-            { image:gameRockTexture , "imgWidth":40 , "imgHeight":30 , "imgPosX":-13 , "imgPosY":-28 , "type":"static" , "x":173 , "y":20 , "width": 21.3, "height":8.13 },
-            { "type":"static" , "x":177 , "y":13 , "width": 7, "height":5.27 },
-            { "type":"static" , "x":184 , "y":17 , "width": 9.5, "height":5.27 },
-            { "type":"static" , "x":193 , "y":11.5 , "width": 6.16, "height":5.27 },
-            { "type":"static" , "x":196 , "y":7 , "width": 6.16, "height":2 },
+            { image:gameRockTexture , "imgWidth":40 , "imgHeight":30 , "imgPosX":-13 , "imgPosY":-28 , "type":"static" , "x":173 , "y":21 , "width": 21.3, "height":8.13 },
+            { "type":"static" , "x":177 , "y":14 , "width": 7, "height":5.27 },
+            { "type":"static" , "x":184 , "y":18 , "width": 9.5, "height":5.27 },
+            { "type":"static" , "x":193 , "y":12.5 , "width": 6.16, "height":5.27 },
+            { "type":"static" , "x":196 , "y":8 , "width": 6.16, "height":2 },
             { image:gamePalmtree, "imgWidth": 33.33, "imgHeight":34.6, "imgPosX": -16, "imgPosY":-10, "type":"static", "x":1, "y":2, "width":3, "height":40},
             { image:gameRock4, "imgWidth":7.23, "imgHeight":5.87, "imgPosX":-3.5, "imgPosY":-2, "type":"static", "width":5, "height":2, "x":39, "y":11 },
             { image:gameRock5, "imgWidth":6.87, "imgHeight":6.27, "imgPosX":-3.8, "imgPosY":-2.2, "type":"static", "width":4.5, "height":2, "x":48.5, "y":8 },
@@ -35,13 +35,13 @@ function constructJSON(){
         ],
         "treasure": [
             { image: gameTreasureChest , type: "static" , imgWidth: 4 , imgHeight: 2.2 ,
-                imgPosX: -2 , imgPosY: -1.3 , x: 78 , y:4 , height: 2.2 , width: 4 , categoryBits: CATEGORY_PLAYER , maskBits: MASK_PLAYER , subtype:"chest" }
+                imgPosX: -2 , imgPosY: -1.3 , x: 78 , y:4 , height: 2.2 , width: 4 , categoryBits: CATEGORY_PLAYER , maskBits: MASK_PLAYER }
         ],
         "collectibles": [
             { image: gameDarknessPickup , type: "static" , imgWidth: 2 , imgHeight: 2 ,
                 imgPosX: -1 , imgPosY: -1 , x: 39 , y: 20 , height: 2 , width: 2 , categoryBits: CATEGORY_PLAYER , maskBits: MASK_PLAYER , subtype:"common" },
             { image: gameDarknessPickup , type: "static" , imgWidth: 2 , imgHeight: 2 ,
-                imgPosX: -1 , imgPosY: -1 , x: 64 , y: 13 , height: 2 , width: 2 , categoryBits: CATEGORY_PLAYER , maskBits: MASK_PLAYER , subtype:"common" },
+                imgPosX: -1 , imgPosY: -1 , x: 48.5 , y: 5 , height: 2 , width: 2 , categoryBits: CATEGORY_PLAYER , maskBits: MASK_PLAYER , subtype:"common" },
             { image: gameDarknessPickup , type: "static" , imgWidth: 2 , imgHeight: 2 ,
                 imgPosX: -1 , imgPosY: -1 , x: 80 , y: 17 , height: 2 , width: 2 , categoryBits: CATEGORY_PLAYER , maskBits: MASK_PLAYER , subtype:"common" },
             { image: gameDarknessPickup , type: "static" , imgWidth: 2 , imgHeight: 2 ,
@@ -50,8 +50,18 @@ function constructJSON(){
                 imgPosX: -1 , imgPosY: -1 , x: 98 , y: 8 , height: 2 , width: 2 , categoryBits: CATEGORY_PLAYER , maskBits: MASK_PLAYER , subtype:"common" },
             { image: gameDarknessPickup , type: "static" , imgWidth: 2 , imgHeight: 2 ,
                 imgPosX: -1 , imgPosY: -1 , x: 120 , y: 8 , height: 2 , width: 2 , categoryBits: CATEGORY_PLAYER , maskBits: MASK_PLAYER , subtype:"common" },
+            { image: gameDarknessPickup , type: "static" , imgWidth: 2 , imgHeight: 2 ,
+                imgPosX: -1 , imgPosY: -1 , x: 26 , y: 0 , height: 2 , width: 2 , categoryBits: CATEGORY_PLAYER , maskBits: MASK_PLAYER , subtype:"common" },
+            { image: gameDarknessPickup , type: "static" , imgWidth: 2 , imgHeight: 2 ,
+                imgPosX: -1 , imgPosY: -1 , x: 191 , y: 8 , height: 2 , width: 2 , categoryBits: CATEGORY_PLAYER , maskBits: MASK_PLAYER , subtype:"common" },
             { image: gameDarknessRarePickup , type: "static" , imgWidth: 2 , imgHeight: 2 ,
-                imgPosX: -1 , imgPosY: -1 , x: 62.5 , y: -9.5 , height: 2 , width: 2 , categoryBits: CATEGORY_PLAYER , maskBits: MASK_PLAYER , subtype:"rare" }
+                imgPosX: -1 , imgPosY: -1 , x: 62.5 , y: -9.5 , height: 2 , width: 2 , categoryBits: CATEGORY_PLAYER , maskBits: MASK_PLAYER , subtype:"rare" },
+            { image: gameDarknessRarePickup , type: "static" , imgWidth: 2 , imgHeight: 2 ,
+                imgPosX: -1 , imgPosY: -1 , x: 138 , y: 10 , height: 2 , width: 2 , categoryBits: CATEGORY_PLAYER , maskBits: MASK_PLAYER , subtype:"rare" }
+        ],
+        "portal": [
+            { image: gamePortal , type: "static" , imgWidth: 7 , imgHeight: 5.27 ,
+                imgPosX: -3.5 , imgPosY: -2.63 , x: 185 , y:11 , height: 5.27 , width: 7 , categoryBits: CATEGORY_PLAYER , maskBits: MASK_PLAYER }
         ]
     }
 }
